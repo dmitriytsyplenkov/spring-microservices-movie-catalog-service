@@ -9,7 +9,6 @@ import org.springframework.web.client.RestTemplate;
 import org.springframework.web.reactive.function.client.WebClient;
 
 @SpringBootApplication
-@EnableEurekaClient
 public class MovieCatalogServiceApplication {
 	@Bean
 	@LoadBalanced
