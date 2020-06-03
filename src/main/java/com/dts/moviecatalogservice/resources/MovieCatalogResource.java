@@ -4,7 +4,9 @@ import com.dts.moviecatalogservice.models.CatalogItem;
 import com.dts.moviecatalogservice.models.Movie;
 import com.dts.moviecatalogservice.models.Rating;
 import com.dts.moviecatalogservice.models.UserRating;
-import com.netflix.discovery.DiscoveryClient;
+import com.dts.moviecatalogservice.services.MovieInfo;
+import com.dts.moviecatalogservice.services.UserRatingInfo;
+import com.netflix.hystrix.contrib.javanica.annotation.HystrixCommand;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -13,7 +15,6 @@ import org.springframework.web.client.RestTemplate;
 import org.springframework.web.reactive.function.client.WebClient;
 
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -26,21 +27,26 @@ public class MovieCatalogResource {
     @Autowired
     private WebClient.Builder webClientBuilder;
 
+    @Autowired
+    MovieInfo movieInfo;
+
+    @Autowired
+    UserRatingInfo userRatingInfo;
+
 /*    @Autowired
     private DiscoveryClient discoveryClient;*/
 
     @RequestMapping("/{userId}")
+    //@HystrixCommand(fallbackMethod = "getFallBackCatalog")
     public List<CatalogItem> getCatalog(@PathVariable String userId) {
 
-        UserRating ratings = restTemplate.getForObject("http://rating-data-service/ratingsdata/users/" + userId, UserRating.class);
+        UserRating ratings = userRatingInfo.getUserRating(userId);
         //discoveryClient.getInstancesById();
         return ratings.getUserRating()
                 .stream()
                 .map(rating -> {
                     //для RestTemplate
-                    Movie movie = restTemplate.getForObject("http://movie-info-service/movies/" + rating.getMovieId(), Movie.class);
-
-                    return new CatalogItem(movie.getName(), "Desc", rating.getRating());
+                    return movieInfo.getCatalogItem(rating);
                     //для WebClient
 /*                    Movie movie = webClientBuilder.build()
                             .get()
@@ -54,4 +60,11 @@ public class MovieCatalogResource {
 
 
     }
+
+    public List<CatalogItem> getFallBackCatalog(@PathVariable String userId) {
+        return Arrays.asList(new CatalogItem("No movie", "", 0));
+    }
+
+
+
 }
